@@ -128,7 +128,7 @@ export default function ConversationList({
             />
             <button
               type="submit"
-              className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-semibold text-sm shadow-md hover:shadow-lg active:scale-95"
+              className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
             >
               Chat
             </button>

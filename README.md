@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Real-Time Chat Application
 
-## Getting Started
+A modern, feature-rich real-time chat application built with React and Agora Chat SDK. Experience seamless messaging with advanced features like typing indicators, read receipts, and offline support.
 
-First, run the development server:
+## 🚀 Live Demo
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+[🔗 [Add your live link here](https://drive.google.com/file/d/1Ors447uSIFBuLzWgPmbsdaAgq6RBlIAD/view?usp=sharing)]
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Features
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### 💬 Real-time Messaging
+- **Instant Message Delivery**: Send and receive messages in real-time with minimal latency
+- **Secure Communication**: End-to-end encrypted messaging for privacy
+- **Multi-format Support**: Text messages with proper formatting and emoji support
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 👀 Read Receipts
+- **Delivery Status**: See when your messages are successfully delivered
+- **Read Status**: Know exactly when the recipient reads your messages
+- **Visual Indicators**: 
+  - ⏰ Clock icon: Message sending
+  - ✓ Single check: Message sent
+  - ✓✓ Double checks: Message delivered
+  - ✓✓ Blue checks: Message read
 
-## Learn More
+### 📴 Offline Support
+- **Message Queue**: Messages are queued and delivered when users come online
+- **Sync on Reconnect**: Automatic synchronization of missed messages
+- **Persistent Storage**: Messages are stored securely and retrieved on app restart
 
-To learn more about Next.js, take a look at the following resources:
+### ⌨️ Typing Indicators
+- **Real-time Feedback**: See when the other user is typing
+- **Animated Dots**: Beautiful bouncing animation for typing status
+- **Smart Timeout**: Automatically hides after 2 seconds of inactivity
+- **Optimized Signals**: Prevents unnecessary typing indicator updates
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 📜 Previous Message Loading
+- **Infinite Scroll**: Load previous messages seamlessly as you scroll up
+- **Pagination**: Efficient loading of message history in chunks
+- **Scroll Preservation**: Maintains scroll position when loading older messages
+- **Loading Indicators**: Visual feedback when loading more messages
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 🎨 User Experience
+- **Modern UI**: Beautiful gradient design with smooth animations
+- **Responsive Design**: Works perfectly on desktop and mobile devices
+- **Intuitive Interface**: Clean and user-friendly chat interface
+- **Quick Actions**: Easy peer switching and conversation management
 
-## Deploy on Vercel
+## 🛠️ Technical Features
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Message Status Tracking
+```javascript
+// Message status flow
+Sending → Sent → Delivered → Read

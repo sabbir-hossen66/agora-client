@@ -55,9 +55,9 @@ export default function ChatLogin({ onLoginSuccess }) {
         <div className="text-white space-y-8 hidden md:block">
           <div className="space-y-4">
             <h1 className="text-5xl font-bold leading-tight">
-              Welcome to
+              Real Time Chat{" "}
               <span className="block bg-gradient-to-r from-yellow-200 to-pink-200 bg-clip-text text-transparent">
-                Agora Chat
+                Application
               </span>
             </h1>
             <p className="text-xl text-purple-100">

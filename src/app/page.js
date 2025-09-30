@@ -255,7 +255,7 @@ export default function Home() {
                 <span className="text-6xl">💬</span>
               </div>
               <h2 className="text-3xl font-bold text-gray-800 mb-3">
-                Welcome to Agora Chat
+               Real Time Chat Application
               </h2>
               <p className="text-gray-600 mb-6">
                 Select a conversation from the left or start a new chat by entering a Peer ID

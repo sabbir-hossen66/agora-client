@@ -345,7 +345,7 @@ export default function ChatInterface({ currentUserId, onLogout }) {
 
           <button
             onClick={onLogout}
-            className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             Logout
@@ -380,7 +380,7 @@ export default function ChatInterface({ currentUserId, onLogout }) {
               <button
                 onClick={handleStartChat}
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none cursor-pointer"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
