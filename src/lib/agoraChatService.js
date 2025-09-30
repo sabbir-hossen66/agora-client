@@ -7,6 +7,8 @@ let chatClient = null;
 let currentUserId = null;
 let isLoggedIn = false;
 let messageListeners = [];
+let typingListeners = [];
+let readReceiptListeners = [];
 
 // Initialize chat client
 export const initializeClient = (appKey) => {
@@ -18,6 +20,7 @@ export const initializeClient = (appKey) => {
   try {
     chatClient = new AgoraChat.connection({
       appKey: appKey,
+      delivery: true, // Enable delivery receipts
     });
 
     setupEventHandlers();
@@ -38,10 +41,13 @@ const setupEventHandlers = () => {
       isLoggedIn = true;
       console.log('✅ Connected to Agora Chat');
     },
+
     onDisconnected: () => {
       isLoggedIn = false;
       console.log('⚠️ Disconnected from Agora Chat');
     },
+
+    // Text message received
     onTextMessage: (message) => {
       console.log('📨 Message received:', message);
       
@@ -51,20 +57,66 @@ const setupEventHandlers = () => {
         senderId: message.from,
         receiverId: message.to,
         timestamp: message.time || Date.now(),
-        type: 'received'
+        type: 'received',
+        status: 'received'
       };
 
+      // Send delivery receipt
+      sendDeliveryReceipt(message.id, message.from);
+
+      // Notify all listeners
       messageListeners.forEach(listener => {
         listener(formattedMessage);
       });
     },
+
+    // Delivery receipt received
+    onDeliveredMessage: (message) => {
+      console.log('✅ Message delivered:', message);
+      readReceiptListeners.forEach(listener => {
+        listener({
+          messageId: message.mid,
+          status: 'delivered',
+          from: message.from,
+          to: message.to
+        });
+      });
+    },
+
+    // Read receipt received
+    onReadMessage: (message) => {
+      console.log('👀 Message read:', message);
+      readReceiptListeners.forEach(listener => {
+        listener({
+          messageId: message.mid,
+          status: 'read',
+          from: message.from,
+          to: message.to
+        });
+      });
+    },
+
+    // Channel message (typing indicator)
+    onChannelMessage: (message) => {
+      if (message.type === 'cmd' && message.action === 'typing') {
+        typingListeners.forEach(listener => {
+          listener({
+            userId: message.from,
+            isTyping: message.msg === 'start'
+          });
+        });
+      }
+    },
+
     onTokenWillExpire: () => {
       console.warn('⚠️ Token is about to expire');
     },
+
     onTokenExpired: () => {
       console.error('❌ Token has expired');
       isLoggedIn = false;
     },
+
     onError: (error) => {
       console.error('❌ Agora Chat error:', error);
     },
@@ -105,6 +157,8 @@ export const logout = async () => {
     isLoggedIn = false;
     currentUserId = null;
     messageListeners = [];
+    typingListeners = [];
+    readReceiptListeners = [];
     
     console.log('✅ Logged out successfully');
   } catch (error) {
@@ -125,6 +179,7 @@ export const sendPeerMessage = async (peerId, messageText) => {
       type: "txt",
       to: peerId,
       msg: messageText,
+      delivery: true, // Request delivery receipt
     };
 
     const msg = AgoraChat.message.create(option);
@@ -138,10 +193,103 @@ export const sendPeerMessage = async (peerId, messageText) => {
       senderId: currentUserId,
       receiverId: peerId,
       timestamp: Date.now(),
-      type: 'sent'
+      type: 'sent',
+      status: 'sent'
     };
   } catch (error) {
     console.error('❌ Failed to send message:', error);
+    throw error;
+  }
+};
+
+// Send typing indicator
+export const sendTypingIndicator = async (peerId, isTyping) => {
+  if (!isLoggedIn) return;
+
+  try {
+    const option = {
+      chatType: "singleChat",
+      type: "cmd",
+      to: peerId,
+      action: "typing",
+      msg: isTyping ? "start" : "stop",
+    };
+
+    const msg = AgoraChat.message.create(option);
+    await chatClient.send(msg);
+  } catch (error) {
+    console.error('❌ Failed to send typing indicator:', error);
+  }
+};
+
+// Send delivery receipt
+const sendDeliveryReceipt = async (messageId, to) => {
+  try {
+    await chatClient.send({
+      type: 'delivery',
+      id: messageId,
+      to: to
+    });
+  } catch (error) {
+    console.error('❌ Failed to send delivery receipt:', error);
+  }
+};
+
+// Send read receipt
+export const sendReadReceipt = async (messageId, to) => {
+  if (!isLoggedIn) return;
+
+  try {
+    await chatClient.send({
+      type: 'read',
+      id: messageId,
+      to: to
+    });
+    console.log('✅ Read receipt sent for message:', messageId);
+  } catch (error) {
+    console.error('❌ Failed to send read receipt:', error);
+  }
+};
+
+// Fetch message history
+export const fetchMessageHistory = async (peerId, pageSize = 20, cursor = null) => {
+  if (!isLoggedIn) {
+    throw new Error('You must be logged in to fetch messages');
+  }
+
+  try {
+    const options = {
+      targetId: peerId,
+      pageSize: pageSize,
+      chatType: 'singleChat',
+      searchDirection: 'up', // Load older messages
+    };
+
+    if (cursor) {
+      options.cursor = cursor;
+    }
+
+    const result = await chatClient.getHistoryMessages(options);
+    
+    console.log('✅ Message history fetched:', result.messages.length);
+
+    const formattedMessages = result.messages.map(msg => ({
+      id: msg.id,
+      text: msg.msg,
+      senderId: msg.from,
+      receiverId: msg.to,
+      timestamp: msg.time,
+      type: msg.from === currentUserId ? 'sent' : 'received',
+      status: msg.from === currentUserId ? 'sent' : 'received'
+    }));
+
+    return {
+      messages: formattedMessages,
+      cursor: result.cursor, // For pagination
+      isLast: result.isLast
+    };
+  } catch (error) {
+    console.error('❌ Failed to fetch message history:', error);
     throw error;
   }
 };
@@ -154,6 +302,30 @@ export const onMessageReceived = (callback) => {
 // Remove message listener
 export const removeMessageListener = (callback) => {
   messageListeners = messageListeners.filter(
+    listener => listener !== callback
+  );
+};
+
+// Add typing listener
+export const onTypingStatusChanged = (callback) => {
+  typingListeners.push(callback);
+};
+
+// Remove typing listener
+export const removeTypingListener = (callback) => {
+  typingListeners = typingListeners.filter(
+    listener => listener !== callback
+  );
+};
+
+// Add read receipt listener
+export const onReadReceiptReceived = (callback) => {
+  readReceiptListeners.push(callback);
+};
+
+// Remove read receipt listener
+export const removeReadReceiptListener = (callback) => {
+  readReceiptListeners = readReceiptListeners.filter(
     listener => listener !== callback
   );
 };
