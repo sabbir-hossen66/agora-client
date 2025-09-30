@@ -11,6 +11,7 @@ import {
   Check,
   Loader2,
   ArrowDown,
+  ArrowLeft,
 } from "lucide-react";
 import TypingIndicator from "./TypingIndicator";
 
@@ -32,6 +33,7 @@ export default function ChatInterface({ currentUserId, onLogout }) {
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const lastTypingStateRef = useRef(false);
 
   // Auto scroll to bottom
   const scrollToBottom = (smooth = true) => {
@@ -133,16 +135,56 @@ export default function ChatInterface({ currentUserId, onLogout }) {
     setLoading(false);
   };
 
+  // Send typing indicator
+  const sendTypingSignal = async (typing) => {
+    console.log("📤 Sending typing signal:", {
+      typing,
+      currentChat,
+      lastState: lastTypingStateRef.current,
+    });
+    if (!currentChat || lastTypingStateRef.current === typing) {
+      console.log("❌ Not sending - currentChat or same state");
+      return;
+    }
+
+    try {
+      await agoraChatService.sendTypingIndicator(currentChat, typing);
+      console.log("✅ Typing signal sent successfully");
+      lastTypingStateRef.current = typing;
+    } catch (error) {
+      console.error("Failed to send typing indicator:", error);
+    }
+  };
+
+  // Stop typing indicator
+  const stopTyping = async () => {
+    setIsTyping(false);
+    await sendTypingSignal(false);
+  };
+
   // Send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
 
     if (!messageInput.trim() || !currentChat) return;
 
+    // Clear typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
     try {
-      // Stop typing indicator
-      await agoraChatService.sendTypingIndicator(currentChat, false);
-      setIsTyping(false);
+      // Check login status BEFORE stopping typing
+      const loginStatus = agoraChatService.checkLoginStatus();
+      console.log("📊 Login status before send:", loginStatus);
+
+      // Stop typing indicator (wrapped in try-catch)
+      try {
+        await stopTyping();
+      } catch (err) {
+        console.warn("Failed to stop typing, but continuing:", err);
+      }
 
       const sentMessage = await agoraChatService.sendPeerMessage(
         currentChat,
@@ -157,17 +199,24 @@ export default function ChatInterface({ currentUserId, onLogout }) {
       alert("Failed to send message: " + error.message);
     }
   };
-
   // Handle typing
   const handleTyping = async (e) => {
-    setMessageInput(e.target.value);
+    const value = e.target.value;
+    setMessageInput(value);
+    console.log("⌨️ Typing:", { length: value.length, isTyping, currentChat });
 
     if (!currentChat) return;
 
-    // Start typing indicator
-    if (!isTyping && e.target.value.length > 0) {
+    // Start typing if there's text and not already typing
+    if (value.length > 0 && !isTyping) {
+      console.log("🟢 Starting typing indicator");
       setIsTyping(true);
-      await agoraChatService.sendTypingIndicator(currentChat, true);
+      await sendTypingSignal(true);
+    }
+
+    // Stop typing if input is empty
+    if (value.length === 0 && isTyping) {
+      await stopTyping();
     }
 
     // Clear previous timeout
@@ -175,11 +224,12 @@ export default function ChatInterface({ currentUserId, onLogout }) {
       clearTimeout(typingTimeoutRef.current);
     }
 
-    // Stop typing after 2 seconds of inactivity
-    typingTimeoutRef.current = setTimeout(async () => {
-      setIsTyping(false);
-      await agoraChatService.sendTypingIndicator(currentChat, false);
-    }, 2000);
+    // Set timeout to stop typing after 2 seconds of inactivity
+    if (value.length > 0) {
+      typingTimeoutRef.current = setTimeout(async () => {
+        await stopTyping();
+      }, 2000);
+    }
   };
 
   // Update message status
@@ -193,6 +243,7 @@ export default function ChatInterface({ currentUserId, onLogout }) {
   useEffect(() => {
     // Message received listener
     const handleMessageReceived = (message) => {
+      console.log("Message received:", message);
       if (currentChat && message.senderId === currentChat) {
         setMessages((prev) => [...prev, message]);
         scrollToBottom();
@@ -204,13 +255,28 @@ export default function ChatInterface({ currentUserId, onLogout }) {
 
     // Typing status listener
     const handleTypingStatus = ({ userId, isTyping }) => {
+      console.log("Typing status received:", {
+        userId,
+        isTyping,
+        currentChat,
+        matches: userId === currentChat,
+      });
       if (currentChat && userId === currentChat) {
+        console.log("✅ otherUserTyping to:", isTyping);
         setOtherUserTyping(isTyping);
+      } else {
+        console.log(
+          "❌ Not matching - userId:",
+          userId,
+          "currentChat:",
+          currentChat
+        );
       }
     };
 
     // Read receipt listener
     const handleReadReceipt = ({ messageId, status }) => {
+      console.log("Read receipt received:", { messageId, status });
       updateMessageStatus(messageId, status);
     };
 
@@ -224,6 +290,15 @@ export default function ChatInterface({ currentUserId, onLogout }) {
       agoraChatService.removeReadReceiptListener(handleReadReceipt);
     };
   }, [currentChat]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Get message status icon
   const getStatusIcon = (status) => {
@@ -349,16 +424,19 @@ export default function ChatInterface({ currentUserId, onLogout }) {
                   )}
                 </div>
               </div>
-
               <button
                 onClick={() => {
                   setCurrentChat(null);
                   setPeerId("");
                   setMessages([]);
+                  setOtherUserTyping(false);
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                  }
                 }}
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-sm font-medium"
+                className="p-2 hover:bg-white/10 rounded-lg transition-all cursor-pointer"
               >
-                Back
+                <ArrowLeft className="w-6 h-6" />
               </button>
             </div>
 
@@ -366,7 +444,7 @@ export default function ChatInterface({ currentUserId, onLogout }) {
             <div
               ref={messagesContainerRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white"
+              className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white relative"
               style={{ height: "calc(100% - 140px)" }}
             >
               {/* Loading more indicator */}
@@ -405,9 +483,11 @@ export default function ChatInterface({ currentUserId, onLogout }) {
                   </div>
                 </div>
               ))}
+
+              {/* Typing Indicator */}
               <TypingIndicator
-                userName={currentChat}
                 isVisible={otherUserTyping}
+                userName={currentChat}
               />
 
               <div ref={messagesEndRef} />
@@ -417,7 +497,7 @@ export default function ChatInterface({ currentUserId, onLogout }) {
             {showScrollButton && (
               <button
                 onClick={() => scrollToBottom()}
-                className="absolute bottom-24 right-8 bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700 transition-all transform hover:scale-110"
+                className="absolute bottom-24 right-8 bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700 transition-all transform hover:scale-110 z-10"
               >
                 <ArrowDown className="w-5 h-5" />
               </button>
