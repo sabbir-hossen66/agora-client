@@ -9,6 +9,8 @@ import {
   MessageCircle,
   Zap,
   Shield,
+  TypeIcon,
+  Loader,
 } from "lucide-react";
 
 export default function ChatLogin({ onLoginSuccess }) {
@@ -96,6 +98,31 @@ export default function ChatLogin({ onLoginSuccess }) {
                 <h3 className="font-semibold text-lg">Offline Support</h3>
                 <p className="text-purple-200 text-sm">
                   Messages delivered even when users are offline
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-4 bg-white/10 backdrop-blur-lg rounded-2xl p-4 transform hover:scale-105 transition-all">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                <TypeIcon className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Typing Indecator</h3>
+                <p className="text-purple-200 text-sm">
+                  showing when the other user is typing
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start space-x-4 bg-white/10 backdrop-blur-lg rounded-2xl p-4 transform hover:scale-105 transition-all">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                <Loader className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">
+                  Previous Message Loading
+                </h3>
+                <p className="text-purple-200 text-sm">
+                  Load previous messages when you scroll up
                 </p>
               </div>
             </div>

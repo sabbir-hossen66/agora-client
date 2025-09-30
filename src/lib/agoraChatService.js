@@ -1,36 +1,25 @@
 "use client";
 
-import AgoraChat from "agora-chat";
-
 // Global state
+let AgoraChat = null;
 let chatClient = null;
 let currentUserId = null;
 let isLoggedIn = false;
 let messageListeners = [];
 let typingListeners = [];
 let readReceiptListeners = [];
+let isAgoraChatLoaded = false;
 
-// Initialize chat client
-export const initializeClient = (appKey) => {
-  if (typeof window === 'undefined') {
-    console.warn('⚠️ Agora Chat শুধু browser এ কাজ করবে');
-    return false;
-  }
-
-  try {
-    chatClient = new AgoraChat.connection({
-      appKey: appKey,
-      delivery: true,
-    });
-
-    setupEventHandlers();
-   
-    return true;
-  } catch (error) {
-    console.error('❌ Failed to initialize chat client:', error);
-    return false;
-  }
-};
+// Dynamically load AgoraChat only in browser
+if (typeof window !== 'undefined') {
+  import('agora-chat').then((module) => {
+    AgoraChat = module.default;
+    isAgoraChatLoaded = true;
+    console.log('✅ AgoraChat loaded successfully');
+  }).catch((error) => {
+    console.error('❌ Failed to load AgoraChat:', error);
+  });
+}
 
 // Setup event handlers
 const setupEventHandlers = () => {
@@ -39,12 +28,12 @@ const setupEventHandlers = () => {
   chatClient.addEventHandler("connection&message", {
     onConnected: () => {
       isLoggedIn = true;
-
+      console.log('✅ Connected to Agora Chat');
     },
 
     onDisconnected: () => {
       isLoggedIn = false;
-  
+      console.log('⚠️ Disconnected from Agora Chat');
     },
 
     // Text message received
@@ -79,35 +68,33 @@ const setupEventHandlers = () => {
     },
 
     // CMD message (typing indicator)
-onCmdMessage: (message) => {
-  try {
-    
-    if (message.action === 'typing') {
-      // Check different possible properties
-      const msgContent = message.msg || message.message || message.ext?.msg;
-      const isTyping = msgContent === 'start';
-      
-      console.log('⌨️ Typing status:', { 
-        from: message.from, 
-        msgContent, 
-        isTyping 
-      });
-      
-      typingListeners.forEach(listener => {
-        try {
-          listener({
-            userId: message.from,
-            isTyping: isTyping
+    onCmdMessage: (message) => {
+      try {
+        if (message.action === 'typing') {
+          const msgContent = message.msg || message.message || message.ext?.msg;
+          const isTyping = msgContent === 'start';
+          
+          console.log('⌨️ Typing status:', { 
+            from: message.from, 
+            msgContent, 
+            isTyping 
           });
-        } catch (err) {
-          console.error('Error in typing listener:', err);
+          
+          typingListeners.forEach(listener => {
+            try {
+              listener({
+                userId: message.from,
+                isTyping: isTyping
+              });
+            } catch (err) {
+              console.error('Error in typing listener:', err);
+            }
+          });
         }
-      });
-    }
-  } catch (error) {
-    console.error('❌ Error in onCmdMessage:', error);
-  }
-},
+      } catch (error) {
+        console.error('❌ Error in onCmdMessage:', error);
+      }
+    },
 
     // Delivery receipt received
     onDeliveredMessage: (message) => {
@@ -166,6 +153,38 @@ onCmdMessage: (message) => {
   });
 };
 
+// Initialize chat client with retry logic
+export const initializeClient = (appKey) => {
+  if (typeof window === 'undefined') {
+    console.warn('⚠️ Agora Chat শুধু browser এ কাজ করবে');
+    return false;
+  }
+
+  // Wait for AgoraChat to load if not loaded yet
+  const tryInitialize = () => {
+    if (!isAgoraChatLoaded || !AgoraChat) {
+      console.log('⏳ Waiting for AgoraChat to load...');
+      setTimeout(tryInitialize, 100);
+      return;
+    }
+
+    try {
+      chatClient = new AgoraChat.connection({
+        appKey: appKey,
+        delivery: true,
+      });
+
+      setupEventHandlers();
+      console.log('✅ Chat client initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize chat client:', error);
+    }
+  };
+
+  tryInitialize();
+  return true;
+};
+
 // Login
 export const login = async (userId, token) => {
   if (!chatClient) {
@@ -182,11 +201,6 @@ export const login = async (userId, token) => {
     isLoggedIn = true;
 
     console.log('✅ Login successful:', { userId, isLoggedIn });
-    
-    // Verify login status after 1 second
-    setTimeout(() => {
-      console.log('🔍 Login verification:', { isLoggedIn, currentUserId });
-    }, 1000);
     
     return true;
   } catch (error) {
@@ -393,7 +407,7 @@ export const removeReadReceiptListener = (callback) => {
 
 // Check if client is ready
 export const isClientReady = () => {
-  return chatClient !== null;
+  return chatClient !== null && isAgoraChatLoaded;
 };
 
 // Get current user ID
@@ -404,4 +418,34 @@ export const getCurrentUserId = () => {
 // Check login status
 export const checkLoginStatus = () => {
   return isLoggedIn;
+};
+
+// Get conversation list
+export const getConversationList = async () => {
+  if (!isLoggedIn || !chatClient) {
+    return [];
+  }
+
+  try {
+    const result = await chatClient.getConversationlist();
+    const conversations = [];
+    
+    if (result?.channel_infos) {
+      for (const [peerId, info] of Object.entries(result.channel_infos)) {
+        if (info.chatType === 'singleChat') {
+          conversations.push({
+            peerId,
+            lastMessage: info.lastMessage?.msg || '',
+            timestamp: info.lastMessage?.time || Date.now(),
+            unreadCount: info.unread_num || 0,
+          });
+        }
+      }
+    }
+
+    return conversations.sort((a, b) => b.timestamp - a.timestamp);
+  } catch (error) {
+    console.error('Failed to fetch conversations:', error);
+    return [];
+  }
 };
