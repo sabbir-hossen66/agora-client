@@ -1,7 +1,7 @@
-// শুধু browser এ import হবে
+
 let AgoraRTM = null;
 
-// Browser check করে import করা
+
 if (typeof window !== 'undefined') {
   AgoraRTM = require('agora-rtm-sdk').default;
 }
@@ -26,7 +26,7 @@ class AgoraService {
     return this.client;
   }
 
-  // Login করা Agora তে
+
   async login(userId, token) {
     try {
       if (!this.client) {
@@ -44,7 +44,7 @@ class AgoraService {
     }
   }
 
-  // Logout করা
+
   async logout() {
     try {
       if (this.client && this.isLoggedIn) {
@@ -58,14 +58,14 @@ class AgoraService {
     }
   }
 
-  // Peer-to-peer message পাঠানো
+ 
   async sendPeerMessage(peerId, message) {
     try {
       if (!this.isLoggedIn) {
         throw new Error('Not logged in');
       }
 
-      // Message send করা
+   
       await this.client.sendMessageToPeer(
         { text: message }, // Message content
         peerId // যাকে পাঠাবে তার user ID
@@ -79,7 +79,7 @@ class AgoraService {
     }
   }
 
-  // Message receive করার listener setup
+ 
   onMessageReceived(callback) {
     if (this.client) {
       this.client.on('MessageFromPeer', (message, peerId) => {
@@ -93,7 +93,7 @@ class AgoraService {
     }
   }
 
-  // Connection state change listener
+ 
   onConnectionStateChanged(callback) {
     if (this.client) {
       this.client.on('ConnectionStateChanged', (state, reason) => {
@@ -102,12 +102,12 @@ class AgoraService {
     }
   }
 
-  // Current user ID return করা
+
   getCurrentUserId() {
     return this.currentUserId;
   }
 }
 
-// Singleton instance export করা
+
 const agoraService = new AgoraService();
 export default agoraService;
